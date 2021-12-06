@@ -1,0 +1,41 @@
+Setvar Except1 "MANAGER.SYS"
+Setvar Except2 "OPERATOR.SYS"
+Echo This Will Abort All Sessions And Jobs, With The Exception Of:
+Echo   The Current Job Or Session!
+Echo   !Except1
+Echo   !Except2
+Echo
+if Finfo("SJMSG",0)
+   Purge Sjmsg,Temp
+endif
+build Sjmsg;Rec=-79,,F,Ascii;Temp;Msg
+file Sjmsg=Sjmsg,Oldtemp
+showjob Job=@;*Sjmsg
+setvar Count Finfo("SJMSG",19)
+Setvar Myjob "#" + "!Hpjobtype"+ "!Hpjobnum"
+While Finfo("SJMSG",19) <> 0
+   Input Sjline < Sjmsg
+   If Str(Sjline,1,1) = "#" Then
+      Echo !Sjline
+      If Str(Sjline,1,Len(Myjob)) = Myjob Then
+         Echo  !Myjob Not Aborted! Current Session!
+      Else
+         If Pos(Except1,Sjline) <> 0 Then
+            Echo !Except1 Except#1 Not Aborted!
+         Else
+            If Pos(Except2,Sjline) <> 0 Then
+               Echo !Except2 Except#2 Not Aborted!
+            Else
+               Setvar C Str(Sjline,1,7)
+               Setvar B "Abortjob "
+               Setvar B B + C
+               Echo !B
+               !B
+               Continue
+            Endif
+         Endif
+      Endif
+    Endif
+Endwhile
+
+

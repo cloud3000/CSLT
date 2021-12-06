@@ -1,0 +1,67 @@
+#           Filename: CSLTCOMP
+#
+# ===============================================================
+TELLOP CSLTCOMP Backup completion processing started
+# ***********************************************
+TELLOP CSLTCOMP  Delete yesterdays spoolfiles   (Rdy 1)
+# ***********************************************
+#
+Echo *** BACKUP IS COMPLETE     *** >> *XOUT
+SHOWPROC JOB=@ >> *XOUT
+SPOOLF O@;DELETE
+#
+#
+Echo !HPJOBNAME,!HPUSER.!HPACCOUNT !HPDATEF !HPTIMEF LOGGED OFF >>*XOUT
+Echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ >> *XOUT
+#
+#
+# ***********************************************
+# ***** BUILD BACKUP VARIABLE STATUS FILE
+PURGE BKVARFIL.TEMP > $NULL
+BUILD BKVARFIL.TEMP;REC=-132,1,F,ASCII;DISC=220
+FILE BKVARFIL=BKVARFIL.TEMP,OLD
+XEQ BKECHO > *BKVARFIL
+# ***********************************************
+TELLOP CSLTCOMP  Creating backup status job     (Rdy 2)
+# ***********************************************
+#
+# ***********************************************
+# ***** BUILD BATCH JOB, SUMMARY OF BACKUP STATUS
+PURGE BKSTATUS.BACKUP > $NULL
+BUILD BKSTATUS.BACKUP;REC=-80,1,F,ASCII;DISC=20
+FILE JCLFILE=BKSTATUS.BACKUP,OLD
+# -----------------------------------------------------------------
+Echo #JOB BKSTATUS,MANAGER.SYS;OUTCLASS=LP;PRI=CS;HIPRI >> *JCLFILE
+Echo #PAUSE JOB=#J!HPJOBNUM                             >> *JCLFILE
+Echo #XEQ CHKCSLT !HPJOBNUM                 >> *JCLFILE
+Echo #EOJ                                               >> *JCLFILE
+LIMIT 20,20
+#
+# Special SHB491 job that must run after the backup and before
+# normal processing is started
+# ***********************************************
+TELLOP CSLTCOMP  Special processing starting    (Rdy 3)
+# ***********************************************
+#
+# STREAM xxxxxxxxx
+# PAUSE JOB=!HPLASTJOB
+#
+# ***********************************************
+TELLOP CSLTCOMP  Normal processing starting.    (Rdy 4)
+# ***********************************************
+XEQ BKJOBS.BACKUP
+# -----------------------------------------------------------------
+STREAM BKSTATUS.BACKUP,#
+#
+# ***********************************************
+#file x=mikebrq;dev=BRQLP
+#print !hpspoolid.out.hpspool;out=*x;start=-100
+CONTINUE
+PAUSE 20
+# ***********************************************
+TELLOP CSLTCOMP Jobs and Sessions enabled       (Rdy 5)
+LIMIT 20,60
+TELLOP CSLTCOMP  System Limits are up           (Rdy 6)
+# ***********************************************
+
+

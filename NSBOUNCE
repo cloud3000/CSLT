@@ -1,0 +1,78 @@
+# NSBOUNCE -- Network Services Up/Down with validation
+Tellop ***********************************
+Tellop * Shutting down network transport.
+Tellop ***********************************
+NSCONTROL STOP
+NSCONTROL ABORT
+NETCONTROL STOP
+setvar NETRunning,"Y"
+while NETRunning = "Y"
+   file testit=netcp.net.sys;exc
+   setvar hpfserr,0
+   print *testit;out=$null;end=1    >$null
+   if hpfserr = 90 or hpfserr = 91 then
+      pause 5
+   else
+      setvar NETRunning,"N"
+   endif
+endwhile
+
+Tellop ***********************************
+Tellop Network shutdown is complete.
+Tellop ***********************************
+
+Tellop ***********************************
+Tellop * Checking NMCONFIG file
+Tellop * for non-validated subsystems.
+Tellop ***********************************
+nmmgrval.pub.sys,1
+setvar ValAny, VALDTS + VALNETXPORT + VALIBM + VALOSI
+if ValAny > 0 then
+   purge NMMGRCMD,temp >$null
+   build NMMGRCMD;rec=-80,,f,ascii;temp
+   file nmcmd=nmmgrcmd,oldtemp;dev=disc
+   Tellop openconf nmconfig.pub.sys >>*nmcmd
+   if VALDTS > 0 then
+      Tellop ***********************************
+      Tellop * The DTS subsystem is not validated.
+      Tellop * I will validate it.
+      Tellop ***********************************
+      echo validateconf dts        >>*nmcmd
+   endif
+   if VALNETXPORT > 0 then
+      Tellop ***********************************
+      Tellop * NETXPORT subsystem is not validated.
+      Tellop * I will validate it.
+      Tellop ***********************************
+      echo validateconf netxport   >>*nmcmd
+   endif
+   if VALIBM > 0 then
+      Tellop ***********************************
+      Tellop * The IBM subsystem is not validated.
+      Tellop * I will validate it.
+      Tellop ***********************************
+      echo validateconf ibm        >>*nmcmd
+   endif
+   if VALOSI      > 0 then
+      Tellop ***********************************
+      Tellop * The OSI subsystem is not validated.
+      Tellop * I will validate it.
+      Tellop ***********************************
+      echo validateconf osi        >>*nmcmd
+   endif
+   echo exit                       >>*nmcmd
+   file formlist=$stdlist
+   file nmmgrcmd,oldtemp;dev=disc
+   Tellop ***********************************
+   Tellop * Validating selected subsystems.
+   Tellop ***********************************
+   nmmgr
+   reset nmmgrcmd
+   reset formlist
+   reset nmcmd
+   purge nmmgrcmd,temp
+else
+   Tellop ***********************************
+   Tellop * All NMCONFIG subsystems are validated.
+   Tellop ***********************************
+endif

@@ -1,0 +1,76 @@
+#
+#           Filename: BKUPPREP
+# ===============================================================
+#     This script should be run prior to a system Backup to
+#     gracefully stop all processing, and setup backup media.
+#
+#
+# *******************************************************
+TELLOP BKUPPREP Setting backup media             (prep 1)
+# *******************************************************
+#
+# *********** SET JCW'S FOR DAY OF WEEK ******************
+SETJCW TODAY=!HPDAY
+SETJCW SUNDAY=1
+SETJCW MONDAY=2
+SETJCW TUESDAY=3
+SETJCW WEDNESDAY=4
+SETJCW THURSDAY=5
+SETJCW FRIDAY=6
+SETJCW SATURDAY=7
+# *******************************************************
+# IF !TODAY = !SUNDAY THEN
+SETVAR TAPE_DRIVE '7'
+FILE T;DEV=!TAPE_DRIVE
+Run Online;Info="!TAPE_DRIVE"
+# ELSE
+#  SETVAR TAPE_DRIVE 'DISC'
+#  XEQ GETFNAME
+#  FILE T=/!FNAME;DEV=DISC
+#  PURGE @.!GRP.BACKUP;SHOW;NOCONFIRM
+# ENDIF
+# *******************************************************
+TELLOP BKUPPREP ABORTING ALL JOBS AND SESSIONS   (prep 2)
+# *******************************************************
+SETVAR AJLOGF 'ABORTLOG'
+IF FINFO('!AJLOGF','EXISTS') = FALSE
+   BUILD !AJLOGF;REC=-128,1,F,ASCII;DISC=8172;CIR
+ENDIF
+ALLOWALL
+LIMIT 0,0
+FILE XOUT=!AJLOGF,OLD
+Echo ---------------------------------- >> *XOUT
+Echo !HPJOBNAME,!HPUSER.!HPACCOUNT !HPDATEF !HPTIMEF LOGGED ON >>*XOUT
+Echo *** SESSIONS RUNNING *** >> *XOUT
+SHOWJOB JOB=@S  >> *XOUT
+Echo *** JOBS RUNNING ***  >> *XOUT
+SHOWJOB JOB=@J  >> *XOUT
+Echo 1ST WARN SENT AT !HPDATEF !HPTIMEF >> *XOUT
+TELL @S SYSTEM BACKUP STARTED, ![CHR(%7)]
+TELL @S YOU WILL BE ABORTED IN 2 MINUTES  ![CHR(%7)]
+TELL @S SYSTEM BACKUP STARTED
+TELL @S YOU WILL BE ABORTED IN 2 MINUTES
+PAUSE 120
+Echo *** SESSIONS BEING ABORTED *** >> *XOUT
+SHOWJOB JOB=@S  >> *XOUT
+Echo *** JOBS BEING ABORTED ***  >> *XOUT
+SHOWJOB JOB=@J  >> *XOUT
+Echo FINAL NOTICE  AT !HPDATEF !HPTIMEF >> *XOUT
+TELL @S SYSTEM BACKUP STARTED, ![CHR(%7)]
+TELL @S YOU ARE BEING ABORTED             ![CHR(%7)]
+TELL @S SYSTEM BACKUP STARTED
+TELL @S YOU ARE BEING ABORTED
+# ===============================================================
+#
+Echo WAIT 30 sec. FOR ALL JOBS AND SESSIONS TO END.
+limit 0,0
+XEQ ABORTALL
+PAUSE 30
+Echo *** POSSIBLE HUNG JOB/SESSIONS  *** >> *XOUT
+SHOWJOB         >> *XOUT
+SETVAR BKUPOKAY 'Y'
+# *******************************************************
+TELLOP BKUPPREP Ready to start the backup        (prep 3)
+# *******************************************************
+
+

@@ -1,0 +1,111 @@
+!JOB CSLT,MANAGER.SYS,CSLT;HIPRI;OUTCLASS=LP,1;pri=cs
+!SETVAR HPAUTOCONT TRUE
+!TELLSTRT
+!COMMENT******************************************************
+!COMMENT*  JOB: CSLT + STORE
+!COMMENT*
+!COMMENT*
+!COMMENT*
+!COMMENT********************************************************
+!#SETVAR HPCMDTRACE FALSE
+!XEQ CSLTPREP
+!TELLOP *****************************************
+!TELLOP *                                       *
+!TELLOP *  System CSLT Backup has started       *
+!TELLOP *                                       *
+!TELLOP *****************************************
+!SETVAR HPMAXTAPEBUF TRUE
+!
+!File T;Dev=!Tape_Drive
+!File Sysgtape;Dev=!Tape_Drive
+!File Offline=mikebrq;Dev=brqlp
+!File SysList=mikebrq;Dev=brqlp
+!Tellop ***********************************
+!Tellop * Creating Buldjob1 and Buldjob2
+!Tellop ***********************************
+!Run Buldacct;Info="@"
+!
+!Tellop ***********************************
+!Tellop * Copying system configuration to prevcfg.
+!Tellop ***********************************
+!
+!purge sysgin,temp >$null
+!build sysgin;rec=-80,,f,ascii;temp
+!file sgcmd=sysgin,oldtemp;dev=disc
+!echo permyes on >>*sgcmd
+!echo keep       >>*sgcmd
+!echo exit       >>*sgcmd
+!file sysgin,oldtemp;dev=disc
+!sysgen bootup,prevcfg
+!
+!Tellop ***********************************
+!Tellop * Copy system configuration is Complete.
+!Tellop ***********************************
+!Tellop ***********************************
+!Tellop * Printing System Configuration Report.
+!Tellop * Including IO Devices and Paths
+!Tellop ***********************************
+!purge sysgin,temp >$null
+!build sysgin;rec=-80,,f,ascii;temp
+!file sgcmd=sysgin,oldtemp;dev=disc
+!echo io   >>*sgcmd
+!echo ld   >>*sgcmd
+!echo lp   >>*sgcmd
+!echo exit >>*sgcmd
+!echo exit >>*sgcmd
+!file sysgout=mikebrw;dev=brqlp
+!file sysgin,oldtemp;dev=disc
+!sysgen config
+!Tellop ***********************************
+!Tellop * System Configuration Report
+!Tellop * has been defered on device LP.
+!Tellop * This should be copied to tape in HPSPOOL.
+!Tellop ***********************************
+!purge sysgin,temp
+!reset sysgout
+!reset sgcmd
+!reset sysgin
+!
+!Tellop ***********************************
+!Tellop **  C S L T   C R E A T I O N    **
+!Tellop ***********************************
+!Tellop * Creating Custom System Load Tape.
+!Tellop * CSTL will be on LDEV !Tape_Drive
+!Tellop ***********************************
+!purge sysgin,temp >$null
+!build sysgin;rec=-80,,f,ascii;temp
+!file sgcmd=sysgin,oldtemp;dev=disc
+!echo tape store=^SLTSTORE >>*sgcmd
+!echo exit >>*sgcmd
+!file sysgin,oldtemp;dev=disc
+!sysgen config
+!if cierror <> 0 then
+!    Tellop
+!    Tellop  ===================================
+!    Tellop  The CSLT is BAD! Do not unless you
+!    Tellop  know you can recover without it.
+!    Tellop  ===================================
+!    Tellop
+!endif
+!purge sysgin,temp
+!purge indfile,temp
+!reset sgcmd
+!reset sysgin
+!Tellop ***********************************
+!Tellop * Starting network transport.
+!Tellop ***********************************
+!NETCONTROL START;NET=LOOP
+!NETCONTROL START;NET=LAN1
+!NSCONTROL START
+!
+!Tellop ***********************************
+!Tellop *  Backup Is Complete!
+!Tellop *  Check $STDLIST job=J!HPJOBNUM
+!Tellop *  Try command: jlist !hpjobnum
+!Tellop ***********************************
+!
+!
+!XEQ CSLTCOMP
+!#   CSLTCOMP will do whatever needs to be done after the CSLT is complete.
+!EOJ
+
